@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Handles the form submission for sending SMS messages in the background.
+ * Handles the form submission for sending SMS messages in the background or via selected gateway.
  *
  * @package   local_coursessms
  * @copyright 2025 Kewayne Davidson <admin.kewayne.com>
@@ -84,7 +84,17 @@ switch ($data->targettype) {
         break;
 }
 
+if (empty($users)) {
+    redirect(
+        new moodle_url('/local/coursessms/index.php', ['id' => $courseid]),
+        get_string('error_no_users_found', 'local_coursessms'),
+        null,
+        \core\output\notification::NOTIFY_WARNING
+    );
+}
+
 $smsmanager = \core\di::get(\core_sms\manager::class);
+$successuserids = [];
 $queueduserids = [];
 $failedsends = [];
 $messageidsMap = [];
@@ -93,7 +103,7 @@ $sendername = fullname($USER);
 $courseshortname = $course->shortname;
 $gatewayid = !empty($data->gatewayid) ? (int)$data->gatewayid : 0;
 
-// Resolve gateway display name at time of sending (preserves history if gateway is deleted later).
+// Resolve gateway display name at time of sending.
 $gatewayname = get_string('system_default_gateway', 'local_coursessms');
 if ($gatewayid > 0) {
     $gwRecord = $DB->get_record('sms_gateways', ['id' => $gatewayid]);
@@ -101,6 +111,9 @@ if ($gatewayid > 0) {
         $gatewayname = $gwRecord->name;
     }
 }
+
+// When a specific gateway is selected by the user, send synchronously so core_sms routes to that exact gateway instance.
+$useAsync = ($gatewayid === 0);
 
 foreach ($users as $user) {
     $rawphone1 = trim((string)($user->phone1 ?? ''));
@@ -126,19 +139,27 @@ foreach ($users as $user) {
             'messagetype' => 'coursemessage',
             'recipientuserid' => $user->id,
             'issensitive' => false,
-            'async' => true, // Hand off to background queue for instant form redirection!
+            'async' => $useAsync,
         ];
 
         if ($gatewayid > 0) {
             $sendParams['gatewayid'] = $gatewayid;
         }
 
-        $queuedMessage = $smsmanager->send(...$sendParams);
-        if ($queuedMessage->id) {
+        $resultMessage = $smsmanager->send(...$sendParams);
+
+        if ($resultMessage->id) {
+            $messageidsMap[(int)$user->id] = (int)$resultMessage->id;
+        }
+
+        if ($useAsync) {
             $queueduserids[] = (int)$user->id;
-            $messageidsMap[(int)$user->id] = (int)$queuedMessage->id;
         } else {
-            $failedsends[] = (int)$user->id;
+            if ($resultMessage->status === \core_sms\message_status::GATEWAY_SENT) {
+                $successuserids[] = (int)$user->id;
+            } else {
+                $failedsends[] = (int)$user->id;
+            }
         }
     } catch (\Exception $e) {
         $failedsends[] = (int)$user->id;
@@ -154,7 +175,7 @@ $logrecord = (object)[
     'targetid' => $targetid,
     'gatewayname' => $gatewayname,
     'messageids' => json_encode($messageidsMap),
-    'success_userids' => json_encode($queueduserids),
+    'success_userids' => json_encode($useAsync ? $queueduserids : $successuserids),
     'failed_userids' => json_encode($failedsends),
     'timecreated' => time(),
 ];

@@ -41,6 +41,7 @@ $string['delete_all_logs'] = 'Clear All Logs';
 $string['delete_log'] = 'Delete log';
 $string['error_no_gateway'] = 'There are no SMS gateways configured or available. Please contact the site administrator.';
 $string['error_no_target'] = 'You must select a valid role, group, or cohort.';
+$string['error_no_users_found'] = 'No enrolled users were found matching the selected target (e.g. role or group).';
 $string['gateway_heading'] = 'SMS Gateway Sender';
 $string['log_deleted'] = 'SMS log entry deleted successfully.';
 $string['log_details_title'] = 'SMS Batch Details';

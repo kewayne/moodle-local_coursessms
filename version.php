@@ -15,17 +15,17 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version for local_coursessms plugin.
+ * Version details for local_coursessms.
  *
  * @package   local_coursessms
- * @copyright 2025 Kewayne Davidson <admin.kewayne.com>
+ * @copyright 2025 Kewayne Davidson <admin@kewayne.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die;
+defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_coursessms';
-$plugin->version   = 2026081300;
-$plugin->requires  = 2024100700;
+$plugin->version   = 2026081301;
+$plugin->requires  = 2024031100;
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.1.0';
+$plugin->release   = '1.1.1';
